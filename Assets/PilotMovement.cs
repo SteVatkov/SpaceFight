@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using Cinemachine;
 
-public class Movement : MonoBehaviour
+public class PilotMovement : MonoBehaviour
 {
 
     public float verticalInputAcceleration = 1;
@@ -24,11 +24,25 @@ public class Movement : MonoBehaviour
     Vector3 startPosition;
 
     private bool accelerating = false;
+    public bool isSwinging = false;
+    public bool wasSwinging = false;
+
+    public Vector2 ropeHook;
+    public float swingForce = 4f;
 
     public Animator thrusterAnimator;
 
     public UnityEvent thrustersOn;
     public UnityEvent thrustersOff;
+
+    private Rigidbody2D rBody;
+
+    Vector2 perpendicularDirection;
+
+    private void Start()
+    {
+        rBody = GetComponent<Rigidbody2D>();
+    }
 
     private void Update()
     {
@@ -91,6 +105,38 @@ public class Movement : MonoBehaviour
         // update transform
         transform.position += velocity * Time.deltaTime;
         transform.Rotate(0, 0, zRotationVelocity * Time.deltaTime);
+
+
+        if (isSwinging)
+        {
+            float horizontalInput = Input.GetAxis("Horizontal");
+
+            // 1 - Get a normalized direction vector from the player to the hook point
+            var playerToHookDirection = (ropeHook - (Vector2)transform.position).normalized;
+
+            // 2 - Inverse the direction to get a perpendicular direction
+            
+            if (horizontalInput < 0)
+            {
+                perpendicularDirection = new Vector2(-playerToHookDirection.y, playerToHookDirection.x);
+                var leftPerpPos = (Vector2)transform.position - perpendicularDirection * -2f;
+                Debug.DrawLine(transform.position, leftPerpPos, Color.green, 0f);
+            }
+            else
+            {
+                perpendicularDirection = new Vector2(playerToHookDirection.y, -playerToHookDirection.x);
+                var rightPerpPos = (Vector2)transform.position + perpendicularDirection * 2f;
+                Debug.DrawLine(transform.position, rightPerpPos, Color.green, 0f);
+            }
+
+            wasSwinging = true;
+        }
+        else if (!isSwinging && wasSwinging)
+        {
+            var force = perpendicularDirection * swingForce;
+            rBody.AddForce(force, ForceMode2D.Force);
+            wasSwinging = false;
+        }
     }
     
 }
